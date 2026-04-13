@@ -1,98 +1,143 @@
-# SSD_AI_model
-this is a AI model for object detection
-SSD-MobileNet Object Detection on COCO
-This project implements an object detection pipeline using SSDLite320 with a MobileNetV3-Large backbone. The model is trained on a subset of the COCO 2017 dataset to detect specific traffic-related categories. It includes full workflows for data preparation, model training, and inference on both static images and video files.
+# SSD Object Detection on COCO Dataset
 
-Table of Contents
-Features
+A Google Colab notebook that fine-tunes an **SSDLite320 with MobileNetV3-Large** backbone on a custom subset of the COCO 2017 dataset for real-world object detection across 8 traffic-relevant categories.
 
-Target Categories
+---
 
-Project Structure
+## Overview
 
-Getting Started
+This project trains a lightweight Single Shot Detector (SSD) to identify common objects in traffic and urban scenes. It uses a pretrained MobileNetV3-Large backbone and fine-tunes the detection head on a balanced sample from COCO 2017.
 
-Training Details
+**Target classes:**
+- Person
+- Car
+- Truck
+- Motorcycle
+- Bus
+- Bicycle
+- Traffic Light
+- Stop Sign
 
-Inference
+---
 
-Evaluation
+## Model Architecture
 
-Features
-Automated Data Management: Downloads and extracts the COCO 2017 dataset automatically.
+| Component | Details |
+|---|---|
+| Model | SSDLite320 |
+| Backbone | MobileNet V3 Large (pretrained on ImageNet) |
+| Input resolution | 320 × 320 |
+| Output classes | 9 (8 categories + background) |
+| Framework | PyTorch / TorchVision |
 
-Custom Dataset Class: A specialized COCOClassificationDataset class that filters for specific categories and handles bounding box normalization.
+---
 
-SSDLite Architecture: Utilizes ssdlite320_mobilenet_v3_large for efficient detection suitable for mobile or edge devices.
+## Dataset
 
-Video Processing: Supports frame-by-frame inference on uploaded video files, generating an output video with overlaid bounding boxes and labels.
+Uses the [COCO 2017](https://cocodataset.org/) dataset, automatically downloaded and stored in Google Drive.
 
-Target Categories
-The model is configured to detect the following 8 classes from the COCO dataset:
+- **Training:** 150 images per class → ~1,200 total
+- **Validation:** 30 images per class → ~240 total
+- Annotations are parsed from the official COCO JSON format and converted to `[x1, y1, x2, y2]` bounding boxes
 
-Person
+---
 
-Car
+## Requirements
 
-Truck
+- Google Colab (with GPU runtime — T4 recommended)
+- Google Drive (for persistent dataset and model storage)
+- Python packages (pre-installed on Colab):
 
-Motorcycle
+```
+torch
+torchvision
+numpy
+Pillow
+matplotlib
+opencv-python (cv2)
+tqdm
+requests
+```
 
-Stop Sign
+---
 
-Traffic Light
+## Getting Started
 
-Bus
+1. **Open the notebook in Google Colab** and connect to a GPU runtime (`Runtime > Change runtime type > T4 GPU`).
 
-Bicycle
+2. **Mount Google Drive** — the first cell handles this automatically.
 
-Project Structure
-Data Setup: Mounts Google Drive and defines paths for COCO training, validation, and annotations.
+3. **Download COCO 2017** — the notebook downloads train/val images and annotations directly from [cocodataset.org](https://cocodataset.org/) and stores them permanently in `MyDrive/COCO/`. This only runs once; subsequent runs skip the download if files already exist.
 
-Preprocessing: Implements horizontal flipping for training augmentation and tensor conversion for validation.
+4. **Run all cells** from top to bottom.
 
-Model Building: Initializes the SSDLite model with pre-trained MobileNetV3 backbone weights.
+---
 
-Training Loop: Implements training with SGD optimizer, StepLR scheduler, and automatic checkpoint saving for the best validation loss.
+## Training
 
-Inference: Provides tools to upload images or videos and visualize detection results with confidence thresholds.
+- **Optimizer:** SGD (momentum=0.9, weight decay=5e-4)
+- **Learning rate:** 0.01 → 0.001 (StepLR scheduler, step size 5, γ=0.1)
+- **Epochs:** 50
+- **Batch size:** 10
+- **Random seed:** 42 (reproducible splits)
 
-Getting Started
-Prerequisites
-Python 3.x
+The best model checkpoint (lowest validation loss) is saved automatically to Google Drive during training. A `latest_checkpoint.pth` is also saved each epoch to allow resuming.
 
-PyTorch / Torchvision
+Checkpoints are saved to:
+```
+/content/drive/MyDrive/COCO/checkpoints/best_detection_model.pth
+/content/drive/MyDrive/COCO/ssd_detection_model.pth
+```
 
-OpenCV (cv2)
+---
 
-PIL (Pillow)
+## Inference
 
-Matplotlib
+After training, the notebook includes an inference cell that:
+1. Loads the saved model weights
+2. Prompts you to upload an image
+3. Runs detection and draws bounding boxes with class labels and confidence scores
 
-Tqdm
+---
 
-Setup
-Open the notebook in Google Colab.
+## Results
 
-Ensure your Colab instance has access to Google Drive for permanent dataset storage.
+The model was trained for 50 epochs. Sample training progress:
 
-Set the runtime to GPU for significantly faster training and inference.
+| Epoch | Train Loss | Val Loss |
+|---|---|---|
+| 1 | 10.23 | 9.48 |
+| 10 | 7.68 | 8.21 |
+| 25 | 6.99 | 8.17 |
+| 37 | 6.47 | 7.99 ✓ best |
+| 50 | 6.32 | 8.02 |
 
-Training Details
-Seed: Fixed at 42 for reproducibility.
+---
 
-Dataset Size: Sampled to 150 images per class for training and 30 per class for validation.
+## Project Structure
 
-Optimizer: SGD with a learning rate of 0.0001, momentum of 0.9, and weight decay of 0.0005.
+```
+SSD_code.ipynb        # Main training & inference notebook
+```
 
-Epochs: Default is set to 10, with a scheduler reducing the learning rate every 5 epochs.
+Google Drive layout after running:
+```
+MyDrive/COCO/
+├── train2017/                    # ~118k training images
+├── val2017/                      # ~5k validation images
+├── annotations/
+│   ├── instances_train2017.json
+│   └── instances_val2017.json
+├── checkpoints/
+│   ├── best_detection_model.pth
+│   └── latest_checkpoint.pth
+└── ssd_detection_model.pth
+```
 
-Inference
-Static Images
-The notebook allows you to upload a local image. The model then performs detection and displays the image with red bounding boxes and blue labels for detected objects.
+---
 
-Video Processing
-Upload any .mp4 or compatible video. The script processes every 10th frame (adjustable) and reconstructs a video with detection overlays, which is then automatically downloaded to your local machine.
+## Notes
 
-Evaluation
-The project includes an Intersection over Union (IoU) calculation function to evaluate the spatial accuracy of the predicted bounding boxes against ground truth.
+- The SSDLite320 model expects a fixed 320×320 input — random crop/resize augmentations are disabled for this reason.
+- The COCO download (~20 GB total) only runs once; subsequent runs detect existing folders and skip.
+- Training uses `torch.no_grad()` during validation to compute val loss efficiently without updating weights.
